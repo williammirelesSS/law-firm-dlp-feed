@@ -1,0 +1,32 @@
+name: "DLP: Misdirected - Recipient Domain One or Two Characters Away From the Firm's Own"
+description: |
+  Detects outbound mail where a recipient's domain is within two edits of one
+  of the firm's own domains but is not one of them, for example a dropped
+  hyphen or a transposed letter. Mail meant for a colleague lands with whoever
+  owns the lookalike domain, which may be a typo-squatter collecting exactly
+  this traffic.
+
+  Scoped to messages with an attachment or a substantial body.
+
+  Expected FPs: genuinely different organisations with short, similar domain
+  names.
+type: "rule"
+severity: "high"
+source: |
+  type.outbound
+  and sender.email.domain.root_domain in $org_domains
+  and any(recipients.to + recipients.cc + recipients.bcc,
+    .email.domain.root_domain not in $org_domains
+    and any($org_domains, strings.ilevenshtein(..email.domain.root_domain, .) <= 2)
+  )
+  and (
+    length(attachments) > 0
+    or length(body.current_thread.text) > 200
+  )
+detection_methods:
+  - "Sender analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Misdirected"
+id: "f3f766ab-199a-4e59-90f9-2964ab772606"

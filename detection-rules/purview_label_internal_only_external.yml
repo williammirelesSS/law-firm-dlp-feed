@@ -1,0 +1,34 @@
+name: "DLP: Purview - Internal-Only Labelled Email Sent Outside the Firm"
+description: |
+  Detects an email whose Purview label says it is internal only (Intern, Nur
+  intern, Internal, Internal Only) going to any recipient outside the firm's
+  domains. Unlike Confidential, which is often legitimately shared with the
+  client, an internal-only label leaving the firm is a policy breach by
+  definition, so this is the cleanest label-based finding.
+
+  Setup: replace the label-name alternation with the firm's actual
+  internal-only label names if they differ.
+
+  Expected FPs: mislabelled mail. Each hit is either a leak or a labelling
+  training issue, and both are worth knowing about.
+type: "rule"
+severity: "high"
+source: |
+  type.outbound
+  and any(headers.hops,
+    any(.fields,
+      .name =~ "msip_labels"
+      and regex.icontains(.value, '_Name=(nur\s+)?intern(al)?(\s+only)?\s*(;|$)')
+    )
+  )
+  and any(recipients.to + recipients.cc + recipients.bcc,
+    .email.domain.root_domain not in $org_domains
+  )
+detection_methods:
+  - "Header analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Purview"
+  - "Sensitivity-Labels"
+id: "72907bf2-f177-4cdd-b5de-c1fefa2fd88d"

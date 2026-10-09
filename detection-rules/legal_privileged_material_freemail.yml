@@ -1,0 +1,49 @@
+name: "DLP: Legal - Privileged or Professionally Confidential Material to Personal Email"
+description: |
+  Detects mail to a personal webmail account where the subject line or an
+  attachment name marks the content as privileged or covered by professional
+  secrecy (anwaltliches Berufsgeheimnis, Mandatsgeheimnis, streng vertraulich,
+  attorney-client privilege, without prejudice).
+
+  Matches only the subject and filenames, never the body. Almost every outbound
+  law-firm email carries a confidentiality disclaimer that uses these exact
+  words, so a body match would fire on everything. A label the author typed
+  into a subject or filename is a deliberate marking.
+
+  Expected FPs: private clients who correspond from a personal address.
+  Tuning: exclude known private-client addresses, or pair with the self-send
+  name-match rule to isolate employee-owned accounts.
+type: "rule"
+severity: "high"
+source: |
+  type.outbound
+  and (
+    strings.ilike(subject.subject,
+      "*privileged*", "*attorney-client*", "*legal privilege*", "*without prejudice*",
+      "*mandatsgeheimnis*", "*berufsgeheimnis*", "*streng vertraulich*",
+      "*anwaltlich vertraulich*", "*nur für den internen gebrauch*",
+      "*nur fuer den internen gebrauch*", "*nicht zur weitergabe*", "*nur intern*",
+      "*internal only*"
+    )
+    or any(attachments,
+      strings.ilike(.file_name,
+        "*privileged*", "*without prejudice*", "*vertraulich*", "*confidential*",
+        "*mandatsgeheimnis*", "*nur intern*", "*internal only*"
+      )
+    )
+  )
+  and any(recipients.to + recipients.cc + recipients.bcc,
+    .email.domain.root_domain in $free_email_providers
+    // German webmail, in case the built-in list does not cover it
+    or .email.domain.root_domain in~ (
+      "gmx.de", "gmx.net", "gmx.at", "gmx.ch", "web.de", "t-online.de",
+      "freenet.de", "posteo.de", "mailbox.org", "arcor.de", "online.de"
+    )
+  )
+detection_methods:
+  - "Content analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Privilege"
+id: "5f728823-0da2-4e93-b595-58990d0f4b6e"

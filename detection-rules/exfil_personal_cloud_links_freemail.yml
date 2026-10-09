@@ -1,0 +1,41 @@
+name: "DLP: Exfil - File-Sharing Links Sent to Personal Email"
+description: |
+  Detects outbound mail to a personal webmail account that contains a link to a
+  file-sharing or consumer cloud service (WeTransfer, Dropbox, Google Drive,
+  OneDrive personal, iCloud, MEGA, SwissTransfer and the platform's free file
+  host list). This is the route that attachment-based rules miss: the files sit
+  in a cloud folder and only the link travels by email.
+
+  Scoped to personal recipients because law firms legitimately use transfer
+  services with corporate clients and opposing counsel.
+
+  Expected FPs: private clients who use a personal address, and employees
+  sharing holiday photos.
+  Tuning: exclude known private-client addresses if they dominate.
+type: "rule"
+severity: "medium"
+source: |
+  type.outbound
+  and any(body.links,
+    .href_url.domain.root_domain in $free_file_hosts
+    or .href_url.domain.root_domain in~ (
+      "wetransfer.com", "we.tl", "dropbox.com", "mega.nz", "swisstransfer.com",
+      "transfernow.net", "filemail.com", "1drv.ms", "icloud.com", "box.com"
+    )
+    or .href_url.domain.domain in~ ("drive.google.com", "docs.google.com", "onedrive.live.com")
+  )
+  and any(recipients.to + recipients.cc + recipients.bcc,
+    .email.domain.root_domain in $free_email_providers
+    // German webmail, in case the built-in list does not cover it
+    or .email.domain.root_domain in~ (
+      "gmx.de", "gmx.net", "gmx.at", "gmx.ch", "web.de", "t-online.de",
+      "freenet.de", "posteo.de", "mailbox.org", "arcor.de", "online.de"
+    )
+  )
+detection_methods:
+  - "URL analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Cloud-Storage"
+id: "948d12ad-74bc-4a74-ba09-d80c0c94335b"

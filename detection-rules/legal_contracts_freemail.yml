@@ -1,0 +1,49 @@
+name: "DLP: Legal - Contracts and Agreements to Personal Email"
+description: |
+  Detects contracts and agreements (Vertrag, Vereinbarung, Geheimhaltungs-
+  vereinbarung, Mandatsvereinbarung, Vollmacht, agreement, addendum, NDA,
+  engagement letter) sent to a personal webmail account, with the employee's
+  own private contracts (tenancy, mobile phone, leasing, insurance, own
+  employment contract) excluded.
+
+  NDA matching uses word-boundary forms only, because "*nda*" on its own also
+  matches "Agenda".
+
+  Expected FPs: private clients receiving their own contracts.
+  Tuning: add recurring personal contract types to the exclusion list.
+type: "rule"
+severity: "medium"
+source: |
+  type.outbound
+  and any(attachments,
+    .file_extension in~ ("pdf", "doc", "docx")
+    and strings.ilike(.file_name,
+      "*vertrag*", "*vereinbarung*", "*nachtrag*", "*vollmacht*",
+      "*geheimhaltung*", "*vertraulichkeitsvereinbarung*", "*mandatsvereinbarung*",
+      "*vergütungsvereinbarung*", "*verguetungsvereinbarung*",
+      "*agreement*", "*addendum*", "*amendment*", "*contract*",
+      "*non-disclosure*", "*engagement letter*", "*letter of intent*",
+      "nda*", "* nda*", "*_nda*", "*-nda*"
+    )
+    and not strings.ilike(.file_name,
+      "*mietvertrag*", "*handyvertrag*", "*mobilfunkvertrag*", "*leasingvertrag*",
+      "*arbeitsvertrag*", "*versicherung*", "*kfz*", "*fitness*", "*tenancy*",
+      "*employment contract*", "*offer letter*"
+    )
+  )
+  and any(recipients.to + recipients.cc + recipients.bcc,
+    .email.domain.root_domain in $free_email_providers
+    // German webmail, in case the built-in list does not cover it
+    or .email.domain.root_domain in~ (
+      "gmx.de", "gmx.net", "gmx.at", "gmx.ch", "web.de", "t-online.de",
+      "freenet.de", "posteo.de", "mailbox.org", "arcor.de", "online.de"
+    )
+  )
+detection_methods:
+  - "Content analysis"
+  - "File analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Contracts"
+id: "9e2a1326-d6e4-4ed1-bc2b-2d12a532560d"

@@ -1,0 +1,43 @@
+name: "DLP: Shadow IT - Work Address Used to Sign Up for Cloud Storage or AI Tools"
+description: |
+  Inbound rule. Detects sign-up and verification emails from consumer cloud
+  storage, file-sharing, e-signature and AI services arriving at a work
+  address. Each hit is a place where client documents may now live outside
+  the firm's control, for example a lawyer uploading a brief to a personal
+  ChatGPT or Dropbox account.
+
+  Expected FPs: sanctioned tools the firm already uses.
+  Tuning: remove sanctioned vendors from the sender list.
+type: "rule"
+severity: "low"
+source: |
+  type.inbound
+  and (
+    strings.ilike(subject.subject,
+      "*confirm your email*", "*verify your email*", "*activate your account*",
+      "*welcome to*", "*your account is ready*", "*complete your registration*",
+      "*bestätigen sie ihre e-mail*", "*e-mail-adresse bestätigen*",
+      "*konto aktivieren*", "*willkommen bei*"
+    )
+    or strings.ilike(body.current_thread.text,
+      "*confirm your email address*", "*verify your account*",
+      "*you signed up for*", "*your free trial*",
+      "*bestätigen sie ihre e-mail-adresse*", "*ihre kostenlose testversion*"
+    )
+  )
+  and sender.email.domain.root_domain in~ (
+    "dropbox.com", "box.com", "wetransfer.com", "mega.nz", "pcloud.com",
+    "notion.so", "evernote.com", "airtable.com", "google.com",
+    "openai.com", "anthropic.com", "chatgpt.com", "perplexity.ai", "deepl.com",
+    "docusign.net", "docusign.com", "hellosign.com", "dropboxsign.com",
+    "pandadoc.com", "smallpdf.com", "ilovepdf.com", "adobe.com"
+  )
+  and all(recipients.to, .email.domain.root_domain in $org_domains)
+detection_methods:
+  - "Content analysis"
+  - "Sender analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Shadow-IT"
+id: "b6b725d6-12bc-42bf-9922-74cef4a86f3f"

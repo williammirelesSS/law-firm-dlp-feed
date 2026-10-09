@@ -1,0 +1,43 @@
+name: "DLP: Leaver - Work Backup Language Sent to Personal Email"
+description: |
+  Detects subject lines such as "backup", "meine Unterlagen", "private Kopie" or
+  "just in case" on mail going to a personal webmail account with an attachment
+  or a substantial body. There is rarely a legitimate reason to send a "work
+  backup" to GMX or Gmail, which makes this one of the lowest-noise leaver
+  signals available.
+
+  Expected FPs: very low. Occasionally an employee backing up genuinely personal
+  files (photos, private letters) from a work device.
+  Tuning: none needed initially.
+type: "rule"
+severity: "medium"
+source: |
+  type.outbound
+  and strings.ilike(subject.subject,
+    "*backup*", "*back up*", "*my files*", "*personal files*", "*personal copy*",
+    "*keeping a copy*", "*just in case*", "*my work*",
+    "*sicherung*", "*meine dateien*", "*meine unterlagen*", "*eigene unterlagen*",
+    "*persönliche unterlagen*", "*persoenliche unterlagen*", "*private kopie*",
+    "*zur sicherheit*", "*für zuhause*", "*fuer zuhause*", "*für später*",
+    "*fuer spaeter*"
+  )
+  and any(recipients.to + recipients.cc + recipients.bcc,
+    .email.domain.root_domain in $free_email_providers
+    // German webmail, in case the built-in list does not cover it
+    or .email.domain.root_domain in~ (
+      "gmx.de", "gmx.net", "gmx.at", "gmx.ch", "web.de", "t-online.de",
+      "freenet.de", "posteo.de", "mailbox.org", "arcor.de", "online.de"
+    )
+  )
+  and (
+    length(attachments) > 0
+    or length(body.current_thread.text) > 1000
+  )
+detection_methods:
+  - "Content analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Leaver"
+  - "Insider-Threat"
+id: "60415192-c7c9-4178-91ad-ce657fa1bc1f"

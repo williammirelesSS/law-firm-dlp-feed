@@ -1,0 +1,64 @@
+name: "DLP: Leaver - Attachments Self-Sent to a Personal Address Matching the Sender's Name"
+description: |
+  Detects an employee sending attachments from their work mailbox to a personal
+  webmail address that matches their own name, for example
+  max.mustermann@firm.com to maxmustermann1984@gmx.de. This is the quietest
+  form of data staging before a move to another firm: no "backup" subject, no
+  covering text, just files leaving to an account the employee controls.
+
+  Checks To, Cc and Bcc, because a personal address added as Bcc is a common way
+  to keep a copy without anyone on the thread noticing.
+
+  Expected FPs: employees mailing their own payslip, travel booking or private
+  paperwork home. Read the attachment names before treating a hit as a finding.
+  Tuning: add filename exclusions for the personal paperwork you see most often.
+type: "rule"
+severity: "medium"
+source: |
+  type.outbound
+  and length(attachments) > 0
+  and any(recipients.to + recipients.cc + recipients.bcc,
+    (
+      .email.domain.root_domain in $free_email_providers
+      // German webmail, in case the built-in list does not cover it
+      or .email.domain.root_domain in~ (
+        "gmx.de", "gmx.net", "gmx.at", "gmx.ch", "web.de", "t-online.de",
+        "freenet.de", "posteo.de", "mailbox.org", "arcor.de", "online.de"
+      )
+    )
+    and (
+      // max@firm.com -> max@gmx.de
+      .email.local_part == sender.email.local_part
+
+      // max@firm.com -> max1984@gmx.de (length guard stops short names matching everything)
+      or (
+        length(sender.email.local_part) >= 4
+        and strings.icontains(.email.local_part, sender.email.local_part)
+      )
+
+      // max.mustermann@firm.com -> maxmustermann84@gmx.de
+      // MQL has no strings.split(), so the dot-separated segments come from named
+      // capture groups. Segments under 3 characters are ignored.
+      or (
+        strings.contains(sender.email.local_part, ".")
+        and any(
+          regex.iextract(sender.email.local_part,
+            '^(?P<s1>[^.]+)\.(?P<s2>[^.]+)(?:\.(?P<s3>[^.]+))?(?:\.(?P<s4>[^.]+))?$'
+          ),
+          (length(.named_groups["s1"]) < 3 or strings.icontains(..email.local_part, .named_groups["s1"]))
+          and (length(.named_groups["s2"]) < 3 or strings.icontains(..email.local_part, .named_groups["s2"]))
+          and (.named_groups["s3"] == null or length(.named_groups["s3"]) < 3 or strings.icontains(..email.local_part, .named_groups["s3"]))
+          and (.named_groups["s4"] == null or length(.named_groups["s4"]) < 3 or strings.icontains(..email.local_part, .named_groups["s4"]))
+        )
+      )
+    )
+  )
+detection_methods:
+  - "Content analysis"
+  - "Sender analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Leaver"
+  - "Insider-Threat"
+id: "2189d98e-5a5c-4e62-8603-ed8d0282e54e"

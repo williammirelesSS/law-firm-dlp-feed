@@ -1,0 +1,33 @@
+name: "DLP: Exfil - Three or More Documents or Saved Emails to Personal Email"
+description: |
+  Detects a single message carrying three or more PDFs, Word documents or saved
+  emails (.msg / .eml) to a personal webmail account. Counting attachments
+  catches document-set transfers regardless of what the files are called.
+  Saved emails are included because forwarding client correspondence as
+  attachments is a common way to move a whole thread in one go.
+
+  Expected FPs: private paperwork (tax returns, rental applications) sent home
+  as a batch.
+  Tuning: raise the threshold to 5 if the hunt is noisy.
+type: "rule"
+severity: "medium"
+source: |
+  type.outbound
+  and length(filter(attachments,
+    .file_extension in~ ("pdf", "doc", "docx", "dotx", "rtf", "msg", "eml")
+  )) >= 3
+  and any(recipients.to + recipients.cc + recipients.bcc,
+    .email.domain.root_domain in $free_email_providers
+    // German webmail, in case the built-in list does not cover it
+    or .email.domain.root_domain in~ (
+      "gmx.de", "gmx.net", "gmx.at", "gmx.ch", "web.de", "t-online.de",
+      "freenet.de", "posteo.de", "mailbox.org", "arcor.de", "online.de"
+    )
+  )
+detection_methods:
+  - "File analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Bulk-Data"
+id: "80f144c5-2c72-474a-808e-f9c05025eb39"

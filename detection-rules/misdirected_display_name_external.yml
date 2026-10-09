@@ -1,0 +1,36 @@
+name: "DLP: Misdirected - External Recipient Displayed With a Colleague's Name"
+description: |
+  Detects outbound mail with an attachment or confidentiality wording where an
+  external recipient's display name matches someone inside the firm. The usual
+  cause is Outlook autocomplete picking a colleague's old personal address or a
+  same-named contact at another firm, so mail meant for a colleague goes
+  outside.
+
+  Expected FPs: colleagues who have saved their own personal address under
+  their name. That is itself worth knowing about.
+type: "rule"
+severity: "medium"
+source: |
+  type.outbound
+  and sender.email.domain.root_domain in $org_domains
+  and any(recipients.to + recipients.cc,
+    .email.domain.root_domain not in $org_domains
+    and .display_name is not null
+    and length(.display_name) > 2
+    and .display_name in~ $org_display_names
+  )
+  and (
+    length(attachments) > 0
+    or strings.ilike(body.current_thread.text,
+      "*confidential*", "*privileged*", "*internal only*", "*not for distribution*",
+      "*vertraulich*", "*nur intern*", "*nicht weiterleiten*", "*nicht zur weitergabe*"
+    )
+  )
+detection_methods:
+  - "Content analysis"
+  - "Sender analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Misdirected"
+id: "255a20f4-2aa4-4939-81fc-42f6b0028ba9"

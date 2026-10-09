@@ -1,0 +1,32 @@
+name: "DLP: Germany - Tax Identification Number (Steuer-ID)"
+description: |
+  Detects a German personal tax ID (Steueridentifikationsnummer, 11 digits,
+  never starting with 0) in the subject or newest message body of outbound
+  mail, gated on Steuer-ID wording.
+
+  Based on the official Sublime DLP rule, repackaged as a standard rule. The
+  keyword gate deliberately leaves out "IdNr" because the firm's own VAT number
+  (USt-IdNr) sits in every email footer and would make every message match.
+  The digit pattern also accepts the common spaced format (12 345 678 901).
+
+  Expected FPs: employees sending their own Steuer-ID to a payroll provider.
+type: "rule"
+severity: "medium"
+source: |
+  type.outbound
+  and any([body.current_thread.text, subject.subject],
+    regex.contains(., '\b[1-9][0-9](?:\s?[0-9]{3}){3}\b')
+  )
+  and any([body.current_thread.text, subject.subject],
+    regex.icontains(.,
+      'steueridentifikationsnummer|steuer-identifikationsnummer|steuerliche\s+identifikationsnummer|steuer-?id\b|tax\s+identification\s+number'
+    )
+  )
+detection_methods:
+  - "Content analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Germany"
+  - "PII"
+id: "e9f58328-e6c8-49b2-98e9-385887a7a525"

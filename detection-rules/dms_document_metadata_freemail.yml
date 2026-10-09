@@ -1,0 +1,42 @@
+name: "DLP: DMS - Office Document With DMS Metadata Sent to Personal Email"
+description: |
+  Detects Office documents whose internal metadata names a document
+  management or legal practice system (iManage / WorkSite, NetDocuments,
+  RA-MICRO, DATEV Anwalt, Advoware, AnNoText, Kleos) being sent to a personal
+  webmail account. DMS and practice-management integrations write their own
+  custom properties into the document when it is saved from the system, and
+  file.explode() exposes those strings.
+
+  Complements the document-number rule: this one still works when someone
+  renames the file to strip the DMS stamp from the filename.
+
+  Setup: if the firm's DMS is not in the list, add its name or the custom
+  property prefix it writes.
+type: "rule"
+severity: "medium"
+source: |
+  type.outbound
+  and any(attachments,
+    .file_extension in~ ("doc", "docx", "docm", "dotx", "xls", "xlsx", "xlsm", "ppt", "pptx")
+    and any(file.explode(.),
+      any(.scan.strings.strings,
+        regex.icontains(., 'imanage|worksite|netdocuments|ra-micro|datev\s?anwalt|advoware|annotext|kleos')
+      )
+    )
+  )
+  and any(recipients.to + recipients.cc + recipients.bcc,
+    .email.domain.root_domain in $free_email_providers
+    // German webmail, in case the built-in list does not cover it
+    or .email.domain.root_domain in~ (
+      "gmx.de", "gmx.net", "gmx.at", "gmx.ch", "web.de", "t-online.de",
+      "freenet.de", "posteo.de", "mailbox.org", "arcor.de", "online.de"
+    )
+  )
+detection_methods:
+  - "File analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "DMS"
+  - "Requires-Customization"
+id: "26003825-1798-421c-9e1e-5f0ba76abf49"

@@ -1,0 +1,45 @@
+name: "DLP: Legal - Pleadings, Opinions and Transaction Documents to Personal Email"
+description: |
+  Detects litigation and advisory work product sent to a personal webmail
+  account, identified by filename: Schriftsatz, Klageschrift, Klageerwiderung,
+  Berufungsbegründung, Urteil, Gutachten, Stellungnahme, Vergleichsentwurf,
+  Due-Diligence-Bericht, statement of claim, witness statement, legal opinion.
+
+  Expected FPs: this is the rule most affected by private clients. Individuals
+  in employment, family or tenancy matters often correspond from a personal
+  address and legitimately receive their own pleadings.
+  Tuning: if private-client traffic dominates, combine this with the self-send
+  name-match logic, or exclude the practice groups that act for individuals.
+type: "rule"
+severity: "medium"
+source: |
+  type.outbound
+  and any(attachments,
+    .file_extension in~ ("pdf", "doc", "docx", "msg")
+    and strings.ilike(.file_name,
+      "*schriftsatz*", "*klageschrift*", "*klageerwiderung*", "*klagerwiderung*",
+      "*replik*", "*duplik*", "*berufungsbegründung*", "*berufungsbegruendung*",
+      "*revisionsbegründung*", "*revisionsbegruendung*", "*beschwerdeschrift*",
+      "*urteil*", "*gutachten*", "*stellungnahme*", "*vergleichsentwurf*",
+      "*vergleichsvorschlag*", "*due diligence*", "*dd-bericht*", "*dd report*",
+      "*statement of claim*", "*particulars of claim*", "*statement of defence*",
+      "*witness statement*", "*skeleton argument*", "*legal opinion*",
+      "*memorandum of advice*", "*judgment*", "*term sheet*", "*disclosure letter*"
+    )
+  )
+  and any(recipients.to + recipients.cc + recipients.bcc,
+    .email.domain.root_domain in $free_email_providers
+    // German webmail, in case the built-in list does not cover it
+    or .email.domain.root_domain in~ (
+      "gmx.de", "gmx.net", "gmx.at", "gmx.ch", "web.de", "t-online.de",
+      "freenet.de", "posteo.de", "mailbox.org", "arcor.de", "online.de"
+    )
+  )
+detection_methods:
+  - "Content analysis"
+  - "File analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Work-Product"
+id: "86699791-9147-4ae0-a178-028f21d681a3"

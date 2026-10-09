@@ -1,0 +1,46 @@
+name: "DLP: Exfil - Work Documents Forwarded to Personal Email (Fwd / WG)"
+description: |
+  Detects forwarded messages (English "Fwd:" / "FW:" and German Outlook "WG:")
+  carrying Office or PDF attachments to a personal webmail account, after
+  removing the personal paperwork people legitimately forward home: payslips,
+  tickets, bookings, receipts and insurance documents.
+
+  Expected FPs: personal documents with unusual names that the exclusion list
+  does not cover.
+  Tuning: add the filenames you see in false positives to the exclusion list.
+type: "rule"
+severity: "medium"
+source: |
+  type.outbound
+  and regex.imatch(subject.subject, '^\s*(fwd?|wg|wtr|tr)\s*:.*')
+  and any(attachments,
+    .file_extension in~ ("pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "msg")
+    and not strings.ilike(.file_name,
+      // travel and bookings
+      "*ticket*", "*boarding*", "*flight*", "*flug*", "*hotel*", "*booking*",
+      "*buchung*", "*itinerary*", "*reiseplan*", "*confirmation*", "*bestätigung*",
+      // the employee's own pay and HR paperwork
+      "*payslip*", "*payroll*", "*salary*", "*gehaltsabrechnung*",
+      "*lohnabrechnung*", "*entgeltabrechnung*", "*lohnsteuerbescheinigung*",
+      "*krankmeldung*", "*au-bescheinigung*",
+      // personal admin
+      "*receipt*", "*quittung*", "*beleg*", "*order*", "*bestellung*",
+      "*insurance*", "*versicherung*", "*pension*", "*rente*"
+    )
+  )
+  and any(recipients.to + recipients.cc + recipients.bcc,
+    .email.domain.root_domain in $free_email_providers
+    // German webmail, in case the built-in list does not cover it
+    or .email.domain.root_domain in~ (
+      "gmx.de", "gmx.net", "gmx.at", "gmx.ch", "web.de", "t-online.de",
+      "freenet.de", "posteo.de", "mailbox.org", "arcor.de", "online.de"
+    )
+  )
+detection_methods:
+  - "Content analysis"
+  - "File analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Forwarding"
+id: "e24f6451-7884-4ac8-b880-a22a235f8576"

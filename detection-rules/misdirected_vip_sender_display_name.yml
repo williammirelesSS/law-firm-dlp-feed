@@ -1,0 +1,29 @@
+name: "DLP: Misdirected - Partner or VIP Sending an Attachment to an External Address Showing a Colleague's Name"
+description: |
+  The highest-impact misdirection case: a sender on the organisation's VIP
+  list (partners, management board) sends an attachment to an external
+  address whose display name matches someone inside the firm.
+
+  Uses the built-in $org_vips list, so it only returns results once VIPs are
+  configured in the platform.
+type: "rule"
+severity: "high"
+source: |
+  type.outbound
+  and sender.email.domain.root_domain in $org_domains
+  and any($org_vips, .email =~ sender.email.email)
+  and length(attachments) > 0
+  and any(recipients.to + recipients.cc,
+    .email.domain.root_domain not in $org_domains
+    and .display_name is not null
+    and length(.display_name) > 2
+    and .display_name in~ $org_display_names
+  )
+detection_methods:
+  - "Sender analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Misdirected"
+  - "VIP"
+id: "eb1ca854-2cb8-4209-86fd-9e16819c80ae"

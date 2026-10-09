@@ -1,0 +1,28 @@
+name: "DLP: Germany - Driving Licence Number (Führerscheinnummer)"
+description: |
+  Detects an 11-character German driving licence number in the subject or
+  newest message body of outbound mail, gated on Führerschein wording.
+
+  Based on the official Sublime DLP rule, repackaged as a standard rule, with
+  the "ue" spelling added to the keyword gate.
+
+  Expected FPs: other 11-character references near the word Führerschein, for
+  example in traffic-law matters. Read before quoting.
+type: "rule"
+severity: "medium"
+source: |
+  type.outbound
+  and any([body.current_thread.text, subject.subject],
+    regex.contains(., '\b[A-Z0-9]{11}\b')
+  )
+  and any([body.current_thread.text, subject.subject],
+    regex.icontains(., 'führerschein|fuehrerschein|driver.?s?\s+licen[cs]e|driving\s+licen[cs]e')
+  )
+detection_methods:
+  - "Content analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Germany"
+  - "PII"
+id: "bac5e7ba-da06-43a9-a080-ae5c117622e9"

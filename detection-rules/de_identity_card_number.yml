@@ -1,0 +1,33 @@
+name: "DLP: Germany - Identity Card Number (Personalausweisnummer)"
+description: |
+  Detects a German identity card number in the subject or newest message body
+  of outbound mail, gated on identity-card wording so a random 9 or 10
+  character code does not match on its own.
+
+  Based on the official Sublime DLP rule, repackaged as a standard rule. The
+  official pattern's alternation was ungrouped, so its second branch matched
+  any 10-digit run (phone numbers, invoice numbers). This version uses the
+  post-2010 card format only: nine characters from the restricted alphabet
+  C F G H J K L M N P R T V W X Y Z and 0-9, starting with a letter, with an
+  optional check digit. Earlier formats have all expired.
+
+  Expected FPs: other codes in the same alphabet that happen to sit near the
+  word "Ausweis". Read before quoting.
+type: "rule"
+severity: "high"
+source: |
+  type.outbound
+  and any([body.current_thread.text, subject.subject],
+    regex.contains(., '\b[CFGHJKLMNPRTVWXYZ][CFGHJKLMNPRTVWXYZ0-9]{8}[0-9]?\b')
+  )
+  and any([body.current_thread.text, subject.subject],
+    regex.icontains(., 'personalausweis|ausweisnummer|ausweis-nr|identity\s+card|id\s+card')
+  )
+detection_methods:
+  - "Content analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Germany"
+  - "PII"
+id: "54568a9e-57dd-4367-9b73-5a418bb54ac7"

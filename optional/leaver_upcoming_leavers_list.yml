@@ -1,0 +1,25 @@
+name: "DLP: Leaver - Any Outbound Attachment From Someone in Their Notice Period"
+description: |
+  Monitors every outbound message with an attachment from anyone on a custom
+  $org_upcoming_leavers list, regardless of recipient or content. Once HR
+  knows someone is leaving, the bar for "worth looking at" drops to zero.
+
+  Requires a custom string list named org_upcoming_leavers containing sender
+  email addresses (Settings > Lists, or synced from an Entra ID group). The
+  rule fails validation until that list exists, which is why it ships outside
+  the detection-rules folder. Move it in once the list is created.
+type: "rule"
+severity: "medium"
+source: |
+  type.outbound
+  and sender.email.email in~ $org_upcoming_leavers
+  and length(attachments) > 0
+  and not all(attachments, .file_extension in~ ("ics"))
+detection_methods:
+  - "Sender analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Leaver"
+  - "Requires-Customization"
+id: "cadaf594-ee15-4cec-8bc9-1cba31fce53a"

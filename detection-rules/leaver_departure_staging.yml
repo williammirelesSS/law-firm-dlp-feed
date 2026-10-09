@@ -1,0 +1,53 @@
+name: "DLP: Leaver - Handover and Departure Material Sent to Personal Email"
+description: |
+  Detects handover, last-day and resignation language (German and English) on
+  mail going to a personal webmail account with an attachment or a long body.
+  Useful as an early-warning signal: it often surfaces a departure before HR or
+  the partners know about it.
+
+  Frame findings as visibility, not accusation. The question is "did we know
+  this person was leaving, and what went with them?"
+
+  Expected FPs: genuine handover notes sent home for holiday cover, replies to
+  interview scheduling.
+  Tuning: exclude automated HR system senders if they appear.
+type: "rule"
+severity: "medium"
+source: |
+  type.outbound
+  and (
+    strings.ilike(subject.subject,
+      "*handover*", "*hand over*", "*last day*", "*leaving*", "*farewell*",
+      "*notice period*", "*signing off*", "*moving on*",
+      "*übergabe*", "*uebergabe*", "*letzter arbeitstag*", "*abschied*",
+      "*kündigung*", "*kuendigung*", "*ausscheiden*"
+    )
+    or strings.ilike(body.current_thread.text,
+      "*last day*", "*leaving the firm*", "*leaving the company*",
+      "*handover document*", "*notice period*", "*resignation*",
+      "*mein letzter arbeitstag*", "*meinem letzten arbeitstag*",
+      "*aus der kanzlei ausscheiden*", "*ich verlasse die kanzlei*",
+      "*übergabeprotokoll*", "*uebergabeprotokoll*", "*übergabedokument*",
+      "*kündigungsfrist*", "*kuendigungsfrist*", "*meine nachfolge*"
+    )
+  )
+  and any(recipients.to + recipients.cc + recipients.bcc,
+    .email.domain.root_domain in $free_email_providers
+    // German webmail, in case the built-in list does not cover it
+    or .email.domain.root_domain in~ (
+      "gmx.de", "gmx.net", "gmx.at", "gmx.ch", "web.de", "t-online.de",
+      "freenet.de", "posteo.de", "mailbox.org", "arcor.de", "online.de"
+    )
+  )
+  and (
+    length(attachments) > 0
+    or length(body.current_thread.text) > 300
+  )
+detection_methods:
+  - "Content analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Leaver"
+  - "HR-Intelligence"
+id: "c05a64a6-2039-4f7d-90a9-93ae7784dbf5"

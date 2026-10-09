@@ -1,0 +1,54 @@
+name: "DLP: DMS - Document Management System Reference in Filename or Body to Personal Email"
+description: |
+  Detects files leaving for a personal webmail account that carry a document
+  management system reference. Law-firm DMS platforms stamp a document number
+  into the filename and footer, and that stamp proves the file came from the
+  firm's managed store rather than being a personal document.
+
+  Ships with generic patterns for the common formats:
+  - NetDocuments style: 4812-3456-7890 v.1
+  - iManage style: #12345678v1 or 12345678.1 or 12345678_1
+  - an explicit "DMS-Nr", "Dok-Nr", "DocID" or "Doc No" label
+
+  Setup: replace these with the firm's real document-number format. One clean
+  regex for the firm's own stamp beats all of the generic ones. If the DMS adds
+  a custom X- header to mail it sends, add that as an extra branch using
+  any(headers.hops, any(.fields, .name =~ "X-Your-Header")).
+
+  Expected FPs: the iManage-style number pattern can collide with invoice or
+  order numbers. Tighten it once the real format is known.
+type: "rule"
+severity: "medium"
+source: |
+  type.outbound
+  and (
+    any(attachments,
+      regex.icontains(.file_name,
+        '\b[0-9]{4}-[0-9]{4}-[0-9]{4}\b',
+        '#[0-9]{6,9}v[0-9]{1,3}',
+        '\b[0-9]{7,9}[._]v?[0-9]{1,3}\b',
+        '(dms|dok|doc)[-_ ]?(nr|no|id)'
+      )
+    )
+    or regex.icontains(body.current_thread.text,
+      '\b[0-9]{4}-[0-9]{4}-[0-9]{4}\s?v\.?\s?[0-9]{1,3}\b',
+      '(dms|dok|doc)[-. ]?(nr|no|id)\.?\s*:?\s*[0-9]{5,}'
+    )
+  )
+  and any(recipients.to + recipients.cc + recipients.bcc,
+    .email.domain.root_domain in $free_email_providers
+    // German webmail, in case the built-in list does not cover it
+    or .email.domain.root_domain in~ (
+      "gmx.de", "gmx.net", "gmx.at", "gmx.ch", "web.de", "t-online.de",
+      "freenet.de", "posteo.de", "mailbox.org", "arcor.de", "online.de"
+    )
+  )
+detection_methods:
+  - "Content analysis"
+  - "File analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "DMS"
+  - "Requires-Customization"
+id: "5f08eb6f-2ddc-4261-9d00-b4a17737119c"

@@ -1,0 +1,43 @@
+name: "DLP: Purview - Sensitivity-Labelled Document Attached to Mail to Personal Email"
+description: |
+  Detects an Office document or PDF carrying a Confidential / Vertraulich /
+  Restricted style Purview label being sent to a personal webmail account,
+  even when the email itself is not labelled. Office files are ZIP bundles of
+  XML, and Purview writes MSIP_Label_<guid>_Name properties into them.
+  file.explode() unpacks the document and the rule reads those strings.
+
+  Limitation: labels with encryption (Rights Management) protect the document
+  contents, so the label metadata may not be readable. Those messages are
+  usually caught by the header-based Purview rules instead.
+
+  Setup: replace the label-name alternation with the firm's actual label names.
+type: "rule"
+severity: "high"
+source: |
+  type.outbound
+  and any(attachments,
+    .file_extension in~ ("doc", "docx", "docm", "xls", "xlsx", "xlsm", "ppt", "pptx", "pptm", "pdf")
+    and any(file.explode(.),
+      any(.scan.strings.strings,
+        strings.icontains(., "MSIP_Label_")
+        and regex.icontains(., '(confidential|vertraulich|restricted|privileged|geheim)')
+      )
+    )
+  )
+  and any(recipients.to + recipients.cc + recipients.bcc,
+    .email.domain.root_domain in $free_email_providers
+    // German webmail, in case the built-in list does not cover it
+    or .email.domain.root_domain in~ (
+      "gmx.de", "gmx.net", "gmx.at", "gmx.ch", "web.de", "t-online.de",
+      "freenet.de", "posteo.de", "mailbox.org", "arcor.de", "online.de"
+    )
+  )
+detection_methods:
+  - "File analysis"
+  - "Content analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Purview"
+  - "Sensitivity-Labels"
+id: "a1bd0b5a-a719-40ae-8b25-d8660f0f2e91"

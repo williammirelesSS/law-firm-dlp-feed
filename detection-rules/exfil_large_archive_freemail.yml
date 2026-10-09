@@ -1,0 +1,34 @@
+name: "DLP: Exfil - Large Archive Files to Personal Email"
+description: |
+  Detects ZIP, 7z, RAR and TAR archives over 5 MB sent to a personal webmail
+  account. Archives are how whole folders leave: a matter file, a precedent
+  bank, or a year of correspondence in one attachment. The contents are not
+  visible from the subject line, which is exactly why people use them.
+
+  Expected FPs: personal photo or document archives.
+  Tuning: none initially. Open the archive listing in the message view before
+  quoting a hit.
+type: "rule"
+severity: "medium"
+source: |
+  type.outbound
+  and any(attachments,
+    .file_extension in~ ("zip", "7z", "rar", "tar", "gz", "tgz")
+    and .size > 5000000
+  )
+  and any(recipients.to + recipients.cc + recipients.bcc,
+    .email.domain.root_domain in $free_email_providers
+    // German webmail, in case the built-in list does not cover it
+    or .email.domain.root_domain in~ (
+      "gmx.de", "gmx.net", "gmx.at", "gmx.ch", "web.de", "t-online.de",
+      "freenet.de", "posteo.de", "mailbox.org", "arcor.de", "online.de"
+    )
+  )
+detection_methods:
+  - "File analysis"
+  - "Archive analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Bulk-Data"
+id: "9ac48b51-74c6-45bf-95b6-bfe229a2b839"

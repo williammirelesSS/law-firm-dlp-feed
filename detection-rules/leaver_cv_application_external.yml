@@ -1,0 +1,33 @@
+name: "DLP: Leaver - CV, Application or Reference Letter Sent Externally"
+description: |
+  Detects a CV (Lebenslauf), job application or employment reference
+  (Arbeitszeugnis, Zwischenzeugnis) attached to mail leaving the firm, whether
+  to a recruiter, another firm, or the employee's own personal account. On its
+  own this is HR intelligence, not a policy breach. Combined with any of the
+  other leaver rules for the same sender, it is a strong departure signal.
+
+  Expected FPs: HR or recruiting staff sending candidate CVs to external
+  recruiters or hiring partners.
+  Tuning: exclude the HR and recruiting mailboxes by sender address.
+type: "rule"
+severity: "low"
+source: |
+  type.outbound
+  and any(attachments,
+    strings.ilike(.file_name,
+      "*lebenslauf*", "*bewerbung*", "*arbeitszeugnis*", "*zwischenzeugnis*",
+      "*referenzschreiben*", "*curriculum vitae*", "*resume*", "*résumé*",
+      "cv*", "* cv*", "*_cv*", "*-cv*"
+    )
+  )
+  and any(recipients.to + recipients.cc + recipients.bcc,
+    .email.domain.root_domain not in $org_domains
+  )
+detection_methods:
+  - "Content analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Leaver"
+  - "HR-Intelligence"
+id: "a220e840-69a4-4154-9c79-f4055405b8c1"

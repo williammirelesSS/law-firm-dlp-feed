@@ -1,0 +1,44 @@
+name: "DLP: Misdirected - Internal Discussion Sent on a Thread That Includes External Parties"
+description: |
+  Detects a reply (Re: / AW: / Antw:) on a thread with both internal and
+  external recipients where the new text is plainly meant for colleagues only:
+  "nur intern", "nicht an den Mandanten", "nicht an die Gegenseite", "unsere
+  Strategie", "between us", "not for the client". The classic law-firm version
+  is internal strategy discussion reply-all'd to opposing counsel.
+
+  Expected FPs: low. Occasionally the phrase is quoted back to a client
+  deliberately.
+type: "rule"
+severity: "high"
+source: |
+  type.outbound
+  and sender.email.domain.root_domain in $org_domains
+  and regex.imatch(subject.subject, '^\s*(re|aw|antw|sv)\s*:.*')
+  and any(recipients.to + recipients.cc,
+    .email.domain.root_domain not in $org_domains
+  )
+  and any(recipients.to + recipients.cc,
+    .email.domain.root_domain in $org_domains
+  )
+  and (
+    strings.ilike(body.current_thread.text,
+      "*internal only*", "*not for external*", "*do not forward*", "*between us*",
+      "*off the record*", "*not for the client*", "*don't send this to the client*",
+      "*our strategy*", "*our fee*", "*our margin*",
+      "*nur intern*", "*nicht weiterleiten*", "*nicht an den mandanten*",
+      "*nicht an die gegenseite*", "*nicht an die gegenpartei*", "*unter uns*",
+      "*unsere strategie*", "*unsere verhandlungsposition*", "*unsere schmerzgrenze*",
+      "*interne abstimmung*", "*intern abstimmen*", "*unser honorar*"
+    )
+    or any(attachments,
+      strings.ilike(.file_name, "*intern*", "*internal*", "*nur intern*")
+      and not strings.ilike(.file_name, "*international*")
+    )
+  )
+detection_methods:
+  - "Content analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Misdirected"
+id: "d63b0537-9250-4e0e-a5a8-19156c4dc34e"

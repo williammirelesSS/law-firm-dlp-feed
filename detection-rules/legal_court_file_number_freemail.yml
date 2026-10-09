@@ -1,0 +1,36 @@
+name: "DLP: Legal - German Court File Numbers (Aktenzeichen) to Personal Email"
+description: |
+  Detects a German court file number (Aktenzeichen) in the subject or newest
+  message body, introduced by "Az.", "Aktenzeichen" or "Geschäftszeichen", on
+  mail going to a personal webmail account. Examples: "Az. 2 O 123/24",
+  "Aktenzeichen VI ZR 45/23", "Az.: 3 Sa 456/21". A court reference ties the
+  message to a specific live matter, which turns a vague finding into a
+  concrete one.
+
+  Expected FPs: private clients receiving correspondence about their own case.
+  Tuning: same as the pleadings rule. Exclude practice groups that act for
+  individuals if they dominate.
+type: "rule"
+severity: "medium"
+source: |
+  type.outbound
+  and any([subject.subject, body.current_thread.text],
+    regex.icontains(.,
+      '(?:\baz\.?|aktenzeichen|geschäftszeichen|geschaeftszeichen)\s*:?\s*(?:[IVX]{1,5}|\d{1,3})\s?[A-Za-z]{1,4}\s?\d{1,5}/\d{2}\b'
+    )
+  )
+  and any(recipients.to + recipients.cc + recipients.bcc,
+    .email.domain.root_domain in $free_email_providers
+    // German webmail, in case the built-in list does not cover it
+    or .email.domain.root_domain in~ (
+      "gmx.de", "gmx.net", "gmx.at", "gmx.ch", "web.de", "t-online.de",
+      "freenet.de", "posteo.de", "mailbox.org", "arcor.de", "online.de"
+    )
+  )
+detection_methods:
+  - "Content analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Work-Product"
+id: "8ba033f3-33b7-4727-8a36-521d183c94b5"

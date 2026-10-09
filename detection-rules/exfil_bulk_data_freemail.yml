@@ -1,0 +1,40 @@
+name: "DLP: Exfil - Bulk Data Exports or Mailbox Archives to Personal Email"
+description: |
+  Detects spreadsheets, CSV, database and XML exports over 100 KB, or any
+  Outlook / mailbox archive (PST, OST, MBOX, OLM), sent to a personal webmail
+  account. Client lists, billing exports and contact databases usually leave
+  this way. A mailbox archive leaving the firm should never happen.
+
+  Expected FPs: small personal spreadsheets (budgets, sports clubs) just over
+  the size threshold.
+  Tuning: raise the size threshold if personal spreadsheets dominate.
+type: "rule"
+severity: "medium"
+source: |
+  type.outbound
+  and any(attachments,
+    (
+      .file_extension in~ (
+        "csv", "tsv", "xls", "xlsx", "xlsm", "xlsb", "ods",
+        "sql", "json", "xml", "mdb", "accdb"
+      )
+      and .size > 100000
+      and not strings.ilike(.file_name, "*sample*", "*example*", "*test*", "*demo*")
+    )
+    or .file_extension in~ ("pst", "ost", "mbox", "olm")
+  )
+  and any(recipients.to + recipients.cc + recipients.bcc,
+    .email.domain.root_domain in $free_email_providers
+    // German webmail, in case the built-in list does not cover it
+    or .email.domain.root_domain in~ (
+      "gmx.de", "gmx.net", "gmx.at", "gmx.ch", "web.de", "t-online.de",
+      "freenet.de", "posteo.de", "mailbox.org", "arcor.de", "online.de"
+    )
+  )
+detection_methods:
+  - "File analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Bulk-Data"
+id: "6ddbe5d5-7072-4a3a-9a96-a5331555a34d"

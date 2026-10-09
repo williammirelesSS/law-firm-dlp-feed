@@ -1,0 +1,41 @@
+name: "DLP: Legal - Precedents, Templates and Know-How to Personal Email"
+description: |
+  Detects firm precedents, model contracts and know-how material (Muster,
+  Mustervertrag, Vorlage, Klauselsammlung, Checkliste, precedent, clause bank,
+  playbook) sent to a personal webmail account. A precedent bank is built over
+  years of billable work and is one of the first things a lawyer takes to a
+  new firm, because it lets them produce work from day one.
+
+  Expected FPs: blank public forms (Formulare) downloaded from a court or
+  authority website and sent home.
+  Tuning: exclude specific public form names if they recur.
+type: "rule"
+severity: "medium"
+source: |
+  type.outbound
+  and any(attachments,
+    .file_extension in~ ("doc", "docx", "dotx", "dotm", "docm", "pdf", "xlsx", "zip")
+    and strings.ilike(.file_name,
+      "*muster*", "*vorlage*", "*klauselsammlung*", "*klauselbank*", "*checkliste*",
+      "*leitfaden*", "*formulierungshilfe*", "*know-how*", "*knowhow*",
+      "*precedent*", "*template*", "*clause bank*", "*clause library*",
+      "*checklist*", "*playbook*", "*practice note*", "*style guide*"
+    )
+  )
+  and any(recipients.to + recipients.cc + recipients.bcc,
+    .email.domain.root_domain in $free_email_providers
+    // German webmail, in case the built-in list does not cover it
+    or .email.domain.root_domain in~ (
+      "gmx.de", "gmx.net", "gmx.at", "gmx.ch", "web.de", "t-online.de",
+      "freenet.de", "posteo.de", "mailbox.org", "arcor.de", "online.de"
+    )
+  )
+detection_methods:
+  - "Content analysis"
+  - "File analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Know-How"
+  - "Leaver"
+id: "c3fc5126-9edd-41b9-b771-82945f7b4588"

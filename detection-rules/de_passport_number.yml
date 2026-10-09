@@ -1,0 +1,31 @@
+name: "DLP: Germany - Passport Number (Reisepassnummer)"
+description: |
+  Detects a German passport number in the subject or newest message body of
+  outbound mail, gated on passport wording.
+
+  Based on the official Sublime DLP rule, repackaged as a standard rule. The
+  official version also required the sender's domain to end in .de or the body
+  to mention Germany, which misses senders on other top-level domains. That
+  gate is removed here. The number pattern is tightened to
+  the actual format: a first character from C F G H J K, then eight characters
+  from the restricted alphabet.
+
+  Expected FPs: other codes in the same alphabet near the word "passport".
+type: "rule"
+severity: "high"
+source: |
+  type.outbound
+  and any([body.current_thread.text, subject.subject],
+    regex.contains(., '\b[CFGHJK][CFGHJKLMNPRTVWXYZ0-9]{8}\b')
+  )
+  and any([body.current_thread.text, subject.subject],
+    regex.icontains(., 'reisepass|passnummer|pass-nr|passport')
+  )
+detection_methods:
+  - "Content analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Germany"
+  - "PII"
+id: "81453ba7-cfba-497e-a0ca-8ba09d6a1799"

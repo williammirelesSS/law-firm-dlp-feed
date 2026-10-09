@@ -1,0 +1,40 @@
+name: "DLP: Purview - Confidential-Labelled Email Sent to Personal Email"
+description: |
+  Detects an email labelled Confidential / Vertraulich / Highly Confidential /
+  Streng vertraulich / Restricted / Privileged in Microsoft Purview being sent
+  to a personal webmail account. The label comes from the msip_labels header
+  that Outlook writes when the user applies a sensitivity label.
+
+  Setup: the regex matches common label names. Replace the alternation with
+  the firm's actual label names from the Purview compliance portal (or from
+  the inventory hunt) for best precision.
+
+  Expected FPs: private clients on personal addresses receiving labelled mail.
+type: "rule"
+severity: "high"
+source: |
+  type.outbound
+  and any(headers.hops,
+    any(.fields,
+      .name =~ "msip_labels"
+      and regex.icontains(.value,
+        '_Name=[^;]*(confidential|vertraulich|restricted|privileged|geheim|secret)'
+      )
+    )
+  )
+  and any(recipients.to + recipients.cc + recipients.bcc,
+    .email.domain.root_domain in $free_email_providers
+    // German webmail, in case the built-in list does not cover it
+    or .email.domain.root_domain in~ (
+      "gmx.de", "gmx.net", "gmx.at", "gmx.ch", "web.de", "t-online.de",
+      "freenet.de", "posteo.de", "mailbox.org", "arcor.de", "online.de"
+    )
+  )
+detection_methods:
+  - "Header analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Purview"
+  - "Sensitivity-Labels"
+id: "01ba8255-adb9-4756-8302-fa2dec8cadf4"

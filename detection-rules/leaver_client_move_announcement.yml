@@ -1,0 +1,42 @@
+name: "DLP: Leaver - Lawyer Telling Clients They Are Moving to Another Firm"
+description: |
+  Detects outbound mail to external recipients where the author says they are
+  leaving the firm, gives new contact details, or talks about taking a mandate
+  with them (Mandatsübertragung, Mandantenmitnahme). In a law firm the client
+  relationship is the asset, so a lawyer soliciting clients before their
+  departure is announced is often a bigger loss than any single document.
+
+  Only the newest message in the thread is checked, so quoted replies from
+  clients do not trigger it.
+
+  Expected FPs: approved departure notices sent after the move was agreed,
+  and clients telling the firm about their own move if they phrase it in the
+  first person in a forwarded message.
+  Tuning: compare hits against the list of announced departures; anything not on
+  it is the finding.
+type: "rule"
+severity: "medium"
+source: |
+  type.outbound
+  and any(recipients.to + recipients.cc + recipients.bcc,
+    .email.domain.root_domain not in $org_domains
+  )
+  and strings.ilike(body.current_thread.text,
+    "*werde die kanzlei*verlassen*", "*werde ich die kanzlei*verlassen*",
+    "*meine neue kanzlei*", "*in meiner neuen kanzlei*", "*meine neuen kontaktdaten*",
+    "*meine neue e-mail-adresse*", "*künftig erreichen sie mich*",
+    "*kuenftig erreichen sie mich*", "*mandat mitnehmen*", "*mandate mitnehmen*",
+    "*mandatsübertragung*", "*mandatsuebertragung*", "*mandantenmitnahme*",
+    "*mandat weiterhin betreuen*", "*weiterhin für sie tätig*",
+    "*i will be leaving the firm*", "*i am leaving the firm*", "*i am moving to*",
+    "*my new firm*", "*my new contact details*", "*continue to act for you*",
+    "*transfer your file*", "*transfer of your matter*", "*take your matter with me*"
+  )
+detection_methods:
+  - "Content analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Leaver"
+  - "Client-Solicitation"
+id: "9c46b1d7-2bfc-4e4f-83dc-c0a9da74c53e"

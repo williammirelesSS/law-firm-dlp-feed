@@ -1,0 +1,47 @@
+name: "DLP: Legal - Client Lists, Matter Lists or Billing Data to Personal Email"
+description: |
+  Detects client lists (Mandantenliste), matter lists (Aktenliste,
+  Mandatsübersicht), fee and billing reports (Honorarumsatz, WIP, timesheets)
+  and contact exports sent to a personal webmail account. This is a departing
+  lawyer's book of business: who the clients are, what they pay, and which
+  matters are open. It is the single most valuable thing to take to a
+  competing firm.
+
+  Expected FPs: very low. Occasionally a personal contact list (sports club,
+  family) with a generic name.
+type: "rule"
+severity: "high"
+source: |
+  type.outbound
+  and any(attachments,
+    .file_extension in~ ("xls", "xlsx", "xlsm", "csv", "pdf", "doc", "docx", "vcf")
+    and strings.ilike(.file_name,
+      "*mandantenliste*", "*mandantenübersicht*", "*mandantenuebersicht*",
+      "*mandantenstamm*", "*mandatsliste*", "*mandatsübersicht*", "*mandatsuebersicht*",
+      "*aktenliste*", "*aktenübersicht*", "*aktenuebersicht*", "*kontaktliste*",
+      "*umsatzliste*", "*umsatzübersicht*", "*umsatzuebersicht*", "*honorarumsatz*",
+      "*honorarübersicht*", "*honoraruebersicht*", "*stundenübersicht*",
+      "*stundenuebersicht*", "*leistungsübersicht*", "*leistungsuebersicht*",
+      "*client list*", "*client_list*", "*clientlist*", "*matter list*",
+      "*matter_list*", "*contact list*", "*contacts export*", "*fee income*",
+      "*billing report*", "*wip report*", "*unbilled*", "*timesheet*",
+      "*origination*", "*pipeline*"
+    )
+  )
+  and any(recipients.to + recipients.cc + recipients.bcc,
+    .email.domain.root_domain in $free_email_providers
+    // German webmail, in case the built-in list does not cover it
+    or .email.domain.root_domain in~ (
+      "gmx.de", "gmx.net", "gmx.at", "gmx.ch", "web.de", "t-online.de",
+      "freenet.de", "posteo.de", "mailbox.org", "arcor.de", "online.de"
+    )
+  )
+detection_methods:
+  - "Content analysis"
+  - "File analysis"
+tags:
+  - "DLP"
+  - "Law-Firm"
+  - "Client-Data"
+  - "Leaver"
+id: "e711bca7-24c2-4d88-9762-b8aec03d2f75"
